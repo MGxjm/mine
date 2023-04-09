@@ -10,7 +10,10 @@ import json
 
 from notify import send
 
-
+"""
+cron: 1 9 * * *
+new Env('茅台申购');
+"""
 
 # 青龙面板加入环境变量Mt_Version和MTTokenD
 # MTTokenD是茅台预约参数，多个请换行，格式'省份,城市,经度,维度,设备id,token,MT-Token-Wap(抓包小茅运)'
