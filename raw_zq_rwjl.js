@@ -9,6 +9,7 @@ uid=12345678&zqkey=xxxxxx&zqkey_id=yyyyyyy@uid=87654321&zqkey=zzzzzzzz&zqkey_id=
 50 21 * * *
 
 */
+const $ = new Env("中青看点 任务奖励");
 const _0xfcf367 = _0xfd06;
 (function (_0x461398, _0x5c98d0) {
     const _0x111ca3 = _0xfd06, _0xd9e0b6 = _0x461398();
