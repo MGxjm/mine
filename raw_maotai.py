@@ -257,6 +257,7 @@ def login(phone, vCode, Device_ID):
 
 
 if __name__ == '__main__':
+    print("正在准备发起请求，请耐心等待。。。")
     timestamp=int(time.time() * 1000)
     mt_tokens = os.getenv("MTTokenD")
     mt_version = os.getenv("Mt_Version")
