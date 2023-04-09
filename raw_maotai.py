@@ -2,12 +2,9 @@ import datetime
 import os
 import random
 import time
-
 import requests
 import base64
 import json
-
-
 from notify import send
 
 """
@@ -31,8 +28,13 @@ res_map = {'10213': '贵州茅台酒（癸卯兔年）', '2478': '贵州茅台�
 
 def mt_add(itemId, shopId, sessionId, userId, token, Device_ID):
     MT_K = f'{timestamp}'
-    r = requests.get(
-        f'http://82.157.10.108:8086/get_mtv?DeviceID={Device_ID}&MTk={MT_K}&version={mt_version}&key=yaohuo')
+    print("获取申购参数中" )
+    try:
+        r = requests.get(
+            f'http://82.157.10.108:8086/get_mtv?DeviceID={Device_ID}&MTk={MT_K}&version={mt_version}&key=yaohuo')
+    except:
+        print("获取申购参数出错！")
+        exit()
     headers = {'User-Agent': 'iPhone 14',
                'MT-Token': token,
                'MT-Network-Type': 'WIFI', 'MT-User-Tag': '0',
@@ -45,12 +47,22 @@ def mt_add(itemId, shopId, sessionId, userId, token, Device_ID):
                'mt-lat': lat}
     d = {"itemInfoList": [{"count": 1, "itemId": str(itemId)}], "sessionId": sessionId, "userId": str(userId),
          "shopId": str(shopId)}
-    r = requests.get('http://82.157.10.108:8086/get_actParam?key=yaohuo&actParam=' + base64.b64encode(
+    try:
+        r = requests.get('http://82.157.10.108:8086/get_actParam?key=yaohuo&actParam=' + base64.b64encode(
         json.dumps(d).replace(' ', '').encode('utf8')).decode())
-    d['actParam'] = r.text
-    response = requests.post('https://app.moutai519.com.cn/xhr/front/mall/reservation/add', headers=headers,
+        d['actParam'] = r.text
+    except:
+        print("获取申购参数出错!")
+        exit()
+    try:
+        print("进入申购页面")
+        response = requests.post('https://app.moutai519.com.cn/xhr/front/mall/reservation/add', headers=headers,
                              json=d)
-    code = response.json().get('code', 0)
+        code = response.json().get('code', 0)
+    except:
+        print("请求申购页面出错" )
+        exit()
+
     if code == 2000:
         return response.json().get('data', {}).get('successDesc', "未知")
     return '申购失败:' + response.json().get('message', "未知原因")
@@ -81,11 +93,15 @@ def get_session_id(device_id, token):
         'mt-lng': lng,
         'mt-lat': lat
     }
-
-    response = requests.get('https://static.moutai519.com.cn/mt-backend/xhr/front/mall/index/session/get/' + time_keys,
+    try:
+        print("获取timekey")
+        response = requests.get('https://static.moutai519.com.cn/mt-backend/xhr/front/mall/index/session/get/' + time_keys,
                             headers=headers)
-    sessionId = response.json().get('data', {}).get('sessionId')
-    itemList = response.json().get('data', {}).get('itemList', [])
+        sessionId = response.json().get('data', {}).get('sessionId')
+        itemList = response.json().get('data', {}).get('itemList', [])
+    except:
+        print("获取参数timekey出错")
+        exit()
     itemCodes = [item.get('itemCode') for item in itemList]
     return sessionId, itemCodes
 
@@ -108,17 +124,25 @@ def get_shop_item(sessionId, itemId, device_id, token, province, city):
         'mt-lat': lat
     }
 
-    response = requests.get(
+    try:
+        print("浏览店铺列表")
+        response = requests.get(
         'https://static.moutai519.com.cn/mt-backend/xhr/front/mall/shop/list/slim/v3/' + str(
             sessionId) + '/' + province + '/' + str(itemId) + '/' + time_keys,
         headers=headers)
-    data = response.json().get('data', {})
-    shops = data.get('shops', [])
+        data = response.json().get('data', {})
+        shops = data.get('shops', [])
+    except:
+        print("获取店铺出错" )
+        exit()
     shop_id_ = p_c_map[province][city]
     for shop in shops:
+
         if not shop.get('shopId') in shop_id_:
+            print("该店铺没有对应商品，跳过")
             continue
         if itemId in str(shop):
+            print("找到商品！")
             return shop.get('shopId')
 
 
@@ -138,12 +162,16 @@ def get_user_id(token, Device_ID):
         'mt-lng': lng,
         'mt-lat': lat
     }
-
-    response = requests.get(
+    try:
+        print("获取用户信息")
+        response = requests.get(
         'https://app.moutai519.com.cn/xhr/front/user/info', headers=headers)
-    userName = response.json().get('data', {}).get('userName')
-    userId = response.json().get('data', {}).get('userId')
-    mobile = response.json().get('data', {}).get('mobile')
+        userName = response.json().get('data', {}).get('userName')
+        userId = response.json().get('data', {}).get('userId')
+        mobile = response.json().get('data', {}).get('mobile')
+    except:
+        print("获取用户信息出错" )
+        exit()
     return userName, userId, mobile
 
 
@@ -197,19 +225,24 @@ def get_map():
         'mt-lng': lng,
         'mt-lat': lat
     }
-    res = requests.get(url, headers=headers, )
-    mtshops = res.json().get('data', {}).get('mtshops_pc', {})
-    urls = mtshops.get('url')
-    r = requests.get(urls)
-    for k, v in dict(r.json()).items():
-        provinceName = v.get('provinceName')
-        cityName = v.get('cityName')
-        if not p_c_map.get(provinceName):
-            p_c_map[provinceName] = {}
-        if not p_c_map[provinceName].get(cityName, None):
-            p_c_map[provinceName][cityName] = [k]
-        else:
-            p_c_map[provinceName][cityName].append(k)
+    try:
+        print("获取地图数据中")
+        res = requests.get(url, headers=headers, )
+        mtshops = res.json().get('data', {}).get('mtshops_pc', {})
+        urls = mtshops.get('url')
+        r = requests.get(urls)
+        for k, v in dict(r.json()).items():
+            provinceName = v.get('provinceName')
+            cityName = v.get('cityName')
+            if not p_c_map.get(provinceName):
+                p_c_map[provinceName] = {}
+            if not p_c_map[provinceName].get(cityName, None):
+                p_c_map[provinceName][cityName] = [k]
+            else:
+                p_c_map[provinceName][cityName].append(k)
+    except:
+        print("获取地图出错" )
+        exit()
     return p_c_map
 
 
@@ -246,10 +279,14 @@ def login(phone, vCode, Device_ID):
         'vCode': f'{vCode}',
         'ydLogId': '',
     }
-
-    response = requests.post('https://app.moutai519.com.cn/xhr/front/user/register/login', headers=headers,
-                             json=json_data)
-    data = response.json().get('data', {})
+    try:
+        print("获取设备token和cookie中")
+        response = requests.post('https://app.moutai519.com.cn/xhr/front/user/register/login', headers=headers,
+                                 json=json_data)
+        data = response.json().get('data', {})
+    except:
+        print("获取设备token和cookie出错")
+        exit()
     token = data.get('token')
     cookie = data.get('cookie')  # MT-Token-Wap
     print(Device_ID, token, cookie)
@@ -257,7 +294,8 @@ def login(phone, vCode, Device_ID):
 
 
 if __name__ == '__main__':
-    print("正在准备发起请求，请耐心等待。。。")
+
+    print("正在准备发起请求，请耐心等待")
     timestamp=int(time.time() * 1000)
     mt_tokens = os.getenv("MTTokenD")
     mt_version = os.getenv("Mt_Version")
@@ -270,39 +308,44 @@ if __name__ == '__main__':
     mt_token_list = mt_tokens.split('&')
     s = f"----总共{len(mt_token_list)}个用户----\n"
     userCount = 0
-    if mt_token_list:
-        for mt_token in mt_token_list:
-            userCount += 1
-            province, city, lng, lat, device_id, token, ck = mt_token.split(
-                ',')
-            time_keys = str(
-                int(time.mktime(datetime.date.today().timetuple())) * 1000)
-            get_map()
+    try:
+        if mt_token_list:
+            print("拆分ck")
+            for mt_token in mt_token_list:
+                userCount += 1
+                province, city, lng, lat, device_id, token, ck = mt_token.split(
+                    ',')
+                time_keys = str(
+                    int(time.mktime(datetime.date.today().timetuple())) * 1000)
+                get_map()
 
-            try:
-                sessionId, itemCodes = get_session_id(device_id, token)
-                userName, user_id, mobile = get_user_id(token, device_id)
-                if not user_id:
-                    print("第"+str(userCount)+"个用户token失效，请重新登录\n")
-                    s += "第"+str(userCount)+"个用户token失效，请重新登录\n"
-                print(f"第{userCount}个用户_{userName}_{mobile}_开始任务----\n")
-                s += f"第{userCount}个用户_{userName}_{mobile}_开始任务----\n"
-                for itemCode in itemCodes:
-                    name = res_map.get(str(itemCode))
-                    if name:
-                        shop_id = get_shop_item(
-                            sessionId, itemCode, device_id, token, province, city)
-                        res = mt_add(itemCode, str(shop_id), sessionId,
-                                     user_id, token, device_id)
-                        print(itemCode + '_' + name + '----' + res + '\n')
-                        s += itemCode + '_' + name + '----' + res + '\n'
-                if ck:
-                    r = getUserEnergyAward(device_id, ck)
-                    print(userName + '_' + mobile + '----' +"小茅运:" + r + '\n')
-                    s += userName + '_' + mobile + '----' +"小茅运:" + r + '\n'
-                print(userName + '_' + mobile + "正常结束任务")
-                s += userName + '_' + mobile + "正常结束任务"+'\n \n'
-            except Exception as e:
-                print(userName + '_' + mobile + "异常信息"+e)
-                s += userName + '_' + mobile + "异常信息"+e
+                try:
+                    print("尝试验证登录")
+                    sessionId, itemCodes = get_session_id(device_id, token)
+                    userName, user_id, mobile = get_user_id(token, device_id)
+                    if not user_id:
+                        print("第"+str(userCount)+"个用户token失效，请重新登录\n")
+                        s += "第"+str(userCount)+"个用户token失效，请重新登录\n"
+                    print(f"第{userCount}个用户_{userName}_{mobile}_开始任务----\n")
+                    s += f"第{userCount}个用户_{userName}_{mobile}_开始任务----\n"
+                    for itemCode in itemCodes:
+                        name = res_map.get(str(itemCode))
+                        if name:
+                            shop_id = get_shop_item(
+                                sessionId, itemCode, device_id, token, province, city)
+                            res = mt_add(itemCode, str(shop_id), sessionId,
+                                         user_id, token, device_id)
+                            print(itemCode + '_' + name + '----' + res + '\n')
+                            s += itemCode + '_' + name + '----' + res + '\n'
+                    # if ck:
+                    #     r = getUserEnergyAward(device_id, ck)
+                    #     print(userName + '_' + mobile + '----' +"小茅运:" + r + '\n')
+                    #     s += userName + '_' + mobile + '----' +"小茅运:" + r + '\n'
+                    print("第"+str(userCount)+"个用户"+userName + '_' + mobile + "正常结束任务\n")
+                    s += userName + '_' + mobile + "正常结束任务"+'\n \n'
+                except Exception as e:
+                    print(userName + '_' + mobile + "异常信息"+e)
+                    s += userName + '_' + mobile + "异常信息"+e
+    except:
+        send("i茅台申购+小茅运", "申购出错!")
     send("i茅台申购+小茅运", s)
