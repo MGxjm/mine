@@ -30,7 +30,7 @@ res_map = {'10213': '贵州茅台酒（癸卯兔年）', '2478': '贵州茅台�
 
 
 def mt_add(itemId, shopId, sessionId, userId, token, Device_ID):
-    MT_K = f'{int(time.time() * 1000)}'
+    MT_K = f'{timestamp}'
     r = requests.get(
         f'http://82.157.10.108:8086/get_mtv?DeviceID={Device_ID}&MTk={MT_K}&version={mt_version}&key=yaohuo')
     headers = {'User-Agent': 'iPhone 14',
@@ -38,7 +38,7 @@ def mt_add(itemId, shopId, sessionId, userId, token, Device_ID):
                'MT-Network-Type': 'WIFI', 'MT-User-Tag': '0',
                'MT-R': mt_r, 'MT-Lat': '', 'MT-K': MT_K,
                'MT-Lng': '', 'MT-Info': '028e7f96f6369cafe1d105579c5b9377', 'MT-APP-Version': mt_version,
-               'MT-Request-ID': f'{int(time.time() * 1000)}', 'Accept-Language': 'zh-Hans-CN;q=1',
+               'MT-Request-ID': f'{timestamp}', 'Accept-Language': 'zh-Hans-CN;q=1',
                'MT-Device-ID': Device_ID, 'MT-V': r.text,
                'MT-Bundle-ID': 'com.moutai.mall',
                'mt-lng': lng,
@@ -48,9 +48,8 @@ def mt_add(itemId, shopId, sessionId, userId, token, Device_ID):
     r = requests.get('http://82.157.10.108:8086/get_actParam?key=yaohuo&actParam=' + base64.b64encode(
         json.dumps(d).replace(' ', '').encode('utf8')).decode())
     d['actParam'] = r.text
-    json_data = d
     response = requests.post('https://app.moutai519.com.cn/xhr/front/mall/reservation/add', headers=headers,
-                             json=json_data)
+                             json=d)
     code = response.json().get('code', 0)
     if code == 2000:
         return response.json().get('data', {}).get('successDesc', "未知")
@@ -75,7 +74,7 @@ def get_session_id(device_id, token):
         'mt-token': token,
         'mt-bundle-id': 'com.moutai.mall',
         'accept-language': 'zh-Hans-CN;q=1',
-        'mt-request-id': f'{int(time.time() * 1000)}',
+        'mt-request-id': f'{timestamp}',
         'mt-app-version': mt_version,
         'user-agent': 'iPhone 14',
         'mt-r': mt_r,
@@ -101,7 +100,7 @@ def get_shop_item(sessionId, itemId, device_id, token, province, city):
         'mt-token': token,
         'mt-bundle-id': 'com.moutai.mall',
         'accept-language': 'zh-Hans-CN;q=1',
-        'mt-request-id': f'{int(time.time() * 1000)}',
+        'mt-request-id': f'{timestamp}',
         'mt-r': mt_r,
         'mt-app-version': mt_version,
         'user-agent': 'iPhone 14',
@@ -131,7 +130,7 @@ def get_user_id(token, Device_ID):
         'MT-Token': token,
         'MT-Bundle-ID': 'com.moutai.mall',
         'Accept-Language': 'zh-Hans-CN;q=1, en-CN;q=0.9',
-        'MT-Request-ID': f'{int(time.time() * 1000)}',
+        'MT-Request-ID': f'{timestamp}',
         'MT-APP-Version': mt_version,
         'User-Agent': 'iOS;16.0.1;Apple;iPhone 14 ProMax',
         'MT-R': mt_r,
@@ -168,7 +167,7 @@ def getUserEnergyAward(device_id, ck):
         'MT-R': mt_r,
         'Origin': 'https://h5.moutai519.com.cn',
         'MT-APP-Version': mt_version,
-        'MT-Request-ID': f'{int(time.time() * 1000)}',
+        'MT-Request-ID': f'{timestamp}',
         'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
         'MT-Device-ID': device_id,
         'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -191,9 +190,9 @@ def get_map():
         'MT-R': mt_r,
         'Origin': 'https://h5.moutai519.com.cn',
         'MT-APP-Version': mt_version,
-        'MT-Request-ID': f'{int(time.time() * 1000)}{random.randint(1111111, 999999999)}{int(time.time() * 1000)}',
+        'MT-Request-ID': f'{timestamp}{random.randint(1111111, 999999999)}{timestamp}',
         'Accept-Language': 'zh-CN,zh-Hans;q=1',
-        'MT-Device-ID': f'{int(time.time() * 1000)}{random.randint(1111111, 999999999)}{int(time.time() * 1000)}',
+        'MT-Device-ID': f'{timestamp}{random.randint(1111111, 999999999)}{timestamp}',
         'Accept': 'application/json, text/javascript, */*; q=0.01',
         'mt-lng': lng,
         'mt-lat': lat
@@ -222,7 +221,7 @@ def login(phone, vCode, Device_ID):
     :param Device_ID: 设备id
     :return:
     """
-    MT_K = f'{int(time.time() * 1000)}'
+    MT_K = f'{timestamp}'
     r = requests.get(
         f'http://82.157.10.108:8086/get_mtv?DeviceID={Device_ID}&MTk={MT_K}&version={mt_version}&key=yaohuo')
     headers = {
@@ -236,7 +235,7 @@ def login(phone, vCode, Device_ID):
         'MT-V': r.text,
         'User-Agent': 'iOS;16.0.1;Apple;iPhone 14 ProMax',
         'Accept-Language': 'zh-Hans-CN;q=1',
-        'MT-Request-ID': f'{int(time.time() * 1000)}18342',
+        'MT-Request-ID': f'{timestamp}18342',
         'MT-R': mt_r,
         'MT-APP-Version': mt_version,
     }
@@ -258,6 +257,7 @@ def login(phone, vCode, Device_ID):
 
 
 if __name__ == '__main__':
+    timestamp=int(time.time() * 1000)
     mt_tokens = os.getenv("MTTokenD")
     mt_version = os.getenv("Mt_Version")
     if not mt_tokens:
@@ -267,11 +267,9 @@ if __name__ == '__main__':
         print('版本号为空 is null')
         exit()
     mt_token_list = mt_tokens.split('&')
-    s = "-------------------总共" + \
-        str(int(len(mt_token_list))) + \
-        "个用户-------------------"+'\n'
+    s = f"----总共{len(mt_token_list)}个用户----\n"
     userCount = 0
-    if len(mt_token_list) > 0:
+    if mt_token_list:
         for mt_token in mt_token_list:
             userCount += 1
             province, city, lng, lat, device_id, token, ck = mt_token.split(
@@ -284,10 +282,10 @@ if __name__ == '__main__':
                 sessionId, itemCodes = get_session_id(device_id, token)
                 userName, user_id, mobile = get_user_id(token, device_id)
                 if not user_id:
-                    s += "第"+str(userCount)+"个用户token失效，请重新登录"+'\n'
-                    continue
-                s += "第"+str(userCount)+"个用户----------------"+userName + '_' + \
-                    mobile + "开始任务" + "----------------"+'\n'
+                    print("第"+str(userCount)+"个用户token失效，请重新登录\n")
+                    s += "第"+str(userCount)+"个用户token失效，请重新登录\n"
+                print(f"第{userCount}个用户_{userName}_{mobile}_开始任务----\n")
+                s += f"第{userCount}个用户_{userName}_{mobile}_开始任务----\n"
                 for itemCode in itemCodes:
                     name = res_map.get(str(itemCode))
                     if name:
@@ -295,13 +293,15 @@ if __name__ == '__main__':
                             sessionId, itemCode, device_id, token, province, city)
                         res = mt_add(itemCode, str(shop_id), sessionId,
                                      user_id, token, device_id)
-                        s += itemCode + \
-                            '_' + name + '---------------' + res + '\n'
-                if not ck:
+                        print(itemCode + '_' + name + '----' + res + '\n')
+                        s += itemCode + '_' + name + '----' + res + '\n'
+                if ck:
                     r = getUserEnergyAward(device_id, ck)
-                    s += userName + '_' + mobile + '---------------' + \
-                        "小茅运:" + r + '\n'
-                s += userName + '_' + mobile + "正常结束任务"+'\n              \n'
+                    print(userName + '_' + mobile + '----' +"小茅运:" + r + '\n')
+                    s += userName + '_' + mobile + '----' +"小茅运:" + r + '\n'
+                print(userName + '_' + mobile + "正常结束任务")
+                s += userName + '_' + mobile + "正常结束任务"+'\n \n'
             except Exception as e:
+                print(userName + '_' + mobile + "异常信息"+e)
                 s += userName + '_' + mobile + "异常信息"+e
     send("i茅台申购+小茅运", s)
