@@ -125,7 +125,7 @@ def get_shop_item(sessionId, itemId, device_id, token, province, city):
     }
 
     try:
-        print("浏览店铺列表")
+        print("加载店铺列表")
         response = requests.get(
         'https://static.moutai519.com.cn/mt-backend/xhr/front/mall/shop/list/slim/v3/' + str(
             sessionId) + '/' + province + '/' + str(itemId) + '/' + time_keys,
@@ -137,12 +137,11 @@ def get_shop_item(sessionId, itemId, device_id, token, province, city):
         exit()
     shop_id_ = p_c_map[province][city]
     for shop in shops:
-
         if not shop.get('shopId') in shop_id_:
-            print("该店铺没有对应商品，跳过")
+            print("该店铺不在定位的区")
             continue
         if itemId in str(shop):
-            print("找到商品！")
+            print("已找到合适店铺！")
             return shop.get('shopId')
 
 
