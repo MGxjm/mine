@@ -7,7 +7,7 @@ uid=12345678&zqkey=xxxxxx&zqkey_id=yyyyyyy@uid=87654321&zqkey=zzzzzzzz&zqkey_id=
 
 定时:
 1-59/15 * * * *
-
+const $ = new Env("中青看点 定时宝箱");
 */
 const _0x3944bb = _0x4553;
 
