@@ -10,6 +10,7 @@ uid=12345678&zqkey=xxxxxx&zqkey_id=yyyyyyy@uid=87654321&zqkey=zzzzzzzz&zqkey_id=
 2 2,15 * * *
 const $ = new Env("中青看点 看看赚");
 */
+const $ = new Env("中青看点 看看赚");
 const _0x7fd325 = _0x277f;
 (function (_0x335738, _0x17e467) {
     const _0x5738d1 = _0x277f, _0x30abf2 = _0x335738();
