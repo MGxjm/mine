@@ -1,7 +1,7 @@
 /*
 @钱题
 变量 qiantiapp 
-0 0-23/1 * * *
+cron:0 0-23/1 * * *
 抓取域名api.cashask.cn  
 里面请求cookie
 多账号换行分割
