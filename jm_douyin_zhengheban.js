@@ -8,7 +8,7 @@
  * 代码就不加密了
  * author：by 张铁蛋
  */
-const $ = new Env('抖音极速版');
+const $ = new Env('抖音极速版_整合版');
 
 let tokens = $.getdata('dyjsb') || process.env['dyjsb'] || '';
 !(async () => {
