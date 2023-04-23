@@ -1,6 +1,12 @@
-//变量 dyjsbbf 多账号换行或@
+/*
+变量 dyjsbbf 多账号换行或@隔开
+把lib文件替换后
+抓包打开宝箱的接口：点击开宝箱。然后搜索 treasure_task 关键词，下面参数全部在这个接口取。
+Cookie里的sessionid，只要值；url里的treasure_task?后面的全部参数；X-Gorgon 和 X-Khronos 的值。
 
-//cron: 0 */21 0-23 * * *
+拼接抓包参数 sessionid#url#X-Gorgon#X-Khronos
+*/
+//cron: 0 */22 0-23 * * *
 
 
 const $ = new Env("抖音极速版");
@@ -171,9 +177,9 @@ function Env(name, env) {
             if (!this.notifyStr) return;
             let notifyBody = this.name + " 运行通知\n\n" + this.notifyStr
             if ($.isNode()) {
-                // var notify = require('./sendNotify');
-                // console.log('\n============== 推送 ==============')
-                // await notify.sendNotify(this.name, notifyBody);
+                var notify = require('./sendNotify');
+                console.log('\n============== 推送 ==============')
+                await notify.sendNotify(this.name, notifyBody);
             } else {
                 this.msg(notifyBody);
             }
