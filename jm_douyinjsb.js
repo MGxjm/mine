@@ -6,7 +6,7 @@ Cookie里的sessionid，只要值；url里的treasure_task?后面的全部参数
 
 拼接抓包参数 sessionid#url#X-Gorgon#X-Khronos
 */
-//cron: 0 */22 0-23 * * *
+//cron: 0 */24 0-23 * * *
 
 
 const $ = new Env("抖音极速版");
