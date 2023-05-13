@@ -1,6 +1,6 @@
 /**
  * 抖音极速版，按理来说只需要传sessionid就行
- croN:0 0,30 5-23,0 * * *
+ cron: 0 0,30 5-23,0 * * *
  * 变量名 dyjsb
  * 值格式 export dyjsb='sessionid=xxx&device_id=xxx&iid=xxx'
  * sessionid必填，device_id和iid实在抓不到不填应该问题不大
