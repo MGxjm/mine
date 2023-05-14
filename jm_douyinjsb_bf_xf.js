@@ -4,14 +4,14 @@
  * 值格式 sessionid=xxx&device_id=xxx&iid=xxx
  * sessionid必填，device_id和iid实在抓不到不填应该问题不大
  *  变量名 dyjsb_bf 是否并发 0否 1是 默认开启并发
- *
+cron: 32 15,45 * * * *
  * 更新日志：
  * 修复看视频
  * 修复领取吃饭补贴
  * 修复看小说
  *  by 张铁蛋
  */
-  // cron： 0 */30 * * *
+
 const $ = new Env('抖音极速版_并发修复版0514');
 
 let tokens = $.getdata('dyjsb') || process.env['dyjsb'] || '';
