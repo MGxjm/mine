@@ -4,7 +4,7 @@
  * 值格式 sessionid=xxx&device_id=xxx&iid=xxx
  * sessionid必填，device_id和iid实在抓不到不填应该问题不大
  *  变量名 dyjsb_bf 是否并发 0否 1是 默认开启并发
-cron: 32 15,45 * * * *
+cron: 32 15,35,55 * * * *
  * 更新日志：
  * 修复看视频
  * 修复领取吃饭补贴
