@@ -1,17 +1,25 @@
-/**
+/*
  * 抖音极速版，按理来说只需要传sessionid就行
- cron: 0 0,30 5-23,0 * * *
  * 变量名 dyjsb
- * 值格式 export dyjsb='sessionid=xxx&device_id=xxx&iid=xxx'
+ * 值格式 sessionid=xxx&device_id=xxx&iid=xxx
  * sessionid必填，device_id和iid实在抓不到不填应该问题不大
- * 
- * 代码就不加密了
- * author：by 张铁蛋
+ *  变量名 dyjsb_bf 是否并发 0否 1是 默认开启并发
+ *
+ * 更新日志：
+ * 修复看视频
+ * 修复领取吃饭补贴
+ * 修复看小说
+ *  by 张铁蛋
  */
-const $ = new Env('抖音极速版_整合版');
+  // cron： 0 */30 * * *
+const $ = new Env('抖音极速版_并发修复版0514');
 
 let tokens = $.getdata('dyjsb') || process.env['dyjsb'] || '';
+let is_bf = $.getdata('dyjsb_bf') || process.env['dyjsb_bf'] || '1';//是否并发 0否 1是
 !(async () => {
+    $.log("当前版本 v1.0.3")
+    $.log("更新日志：1.修复看广告视频金币\n2.修复吃饭补贴\n3.修复看小说赚金币\n------------------");
+    is_bf = parseInt(is_bf);
     if (tokens.indexOf("@") != -1) {
         tokens = tokens.split('@') || [];
     } else {
@@ -33,11 +41,19 @@ let tokens = $.getdata('dyjsb') || process.env['dyjsb'] || '';
     })
     for (let i = 0; i < userList.length; i++) {
         let userInfo = userList[i];
-        await userInfo.main(i);
+        if (is_bf) {
+            userInfo.main(i);
+        } else {
+            await userInfo.main(i);
+        }
     }
 })()
     .catch((e) => $.logErr(e))
-    .finally(() => $.done());
+    .finally(() => {
+        if (!is_bf) {
+            $.done();
+        }
+    });
 
 function jxUser(val) {
     let res = {};
@@ -53,52 +69,93 @@ function jxUser(val) {
 function UserInfo(seesion = '', device_id = '', iid = '') {
     let isbreak = false;
     let cookie = 'sessionid=' + seesion;
-    let $user_agent = '';
-    let version_name = '23.7.0';
+    let $user_agent = 'com.ss.android.ugc.aweme.lite/220901 (Linux; U; Android 10; zh_CN; 16s Pro; Build/QKQ1.191222.002; Cronet/TTNetVersion:6fe86402 2022-07-22 QuicVersion:47946d2a 2020-10-14)';
+    let version_name = '22.9.0';
     let aid = 2329;
     let app_name = 'douyin_lite';
     let index = 0;
     let isOpenBox = false;
-    let indexObj = {};
+    let isOpenBoxAd = false;
+    let task_list = [];
+    let nextOpenTime = -1;
+    let whileObj = {};
 
-    function randomString(e) {
+    function randomString(e, t = "abcdefhijkmnprstwxyz123456789") {
         e = e || 32;
-        let t = "abcdefhijkmnprstwxyz123456789",
-            a = t.length,
+        let a = t.length,
             n = "";
-        for (i = 0; i < e; i++)
+        for (let i = 0; i < e; i++)
             n += t.charAt(Math.floor(Math.random() * a));
         return n
     }
 
     this.main = async function (i) {
+        let startTime = new Date().getTime();
         index = i + 1;
         if (!device_id) {
-            device_id = randomString(16)
+            device_id = randomString(16, "0123456789")
         }
         if (!iid) {
             iid = randomString(16)
         }
         await get_info();
-        if (isbreak) {
-            return;
+        if (!isbreak) {
+            await sign();
+            await whileTask("excitation_ad_signin","签到广告视频",2,async()=>{
+                 let a=task('excitation_ad_signin', '签到广告视频');
+                    await a;
+            });
+            if (task_list.filter(item => item.name === '走路赚金币').length > 0) {
+                await upload_step();
+            }
+            await task('read', '观看同城视频');
+            await one_more_detail();
+            await whileTask("excitation_ad_1", "看广告", 2, excitation_ad);
+            if (task_list.filter(item => item.name === '逛街赚钱').length > 0) {
+                await shopping_gold();
+            }
+            await whileTask("excitation_ad_treasure_box", "开宝箱视频", 2, excitation_ad_treasure_box);
+            await whileTask("excitation_ad", "看广告追加", 2, async () => {
+                let a = ad_append('excitation_ad', '看广告追加');
+                await a;
+            });
+            await whileTask("walk_excitation_ad", "步行额外视频", 2, async () => {
+                let a = ad_append('walk_excitation_ad', '步行额外视频');
+                await a;
+            });
+            if (task_list.filter(item => item.name === '搜索赚金币').length > 0) {
+                await search_excitation();
+            }
+            if (task_list.filter(item => item.name === '填写好友邀请码').length > 0) {
+                //await task('post_invite_code', '填写邀请码', {invite_code: "8220261813"});
+            }
+            if (task_list.filter(item => item.name === '吃饭补贴').length > 0) {
+                await whileTask("meal_check_in","吃饭补贴",2,meal_check_in);
+            }
+            if (task_list.filter(item => item.name === '看小说赚金币').length > 0) {
+                await whileTask("read_novel","看小说赚金币",2,async()=>{
+                    let a=task('read_novel', '看小说赚金币');
+                    await a;
+                });
+            }
+            if (nextOpenTime != -1) {
+                let time = parseInt((nextOpenTime - (new Date().getTime() / 1000)) + '');
+                if (time < 60 * 3) {
+                    //如果距离下次开宝箱在三分钟内，等待三分钟后再开
+                    $.log(`账号[${index}]等待${time}秒开宝箱`);
+                    await $.time(time * 1000);
+                    await whileTask('open_box','开宝箱',5,open_box)
+                }
+            }
+            await get_info(false);
         }
-        await sign();
-        await upload_step();
-        await read();
-        await one_more_detail();
-        await excitation_ad();
-        await shopping_gold();
-        await excitation_ad_treasure_box();
-        await ad_append('excitation_ad', '看广告追加');
-        await ad_append('meal_excitation_ad', '吃饭补贴视频');
-        await ad_append('walk_excitation_ad', '步行额外视频');
-        await search_excitation();
+        const e = (new Date).getTime(), s = (e - startTime) / 1e3;
+        $.log(`账号[${index}] 运行完毕, 结束! 🕛 ${s} 秒`);
     }
 
-    function get_info() {
+    function get_info(open = true) {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/page?iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}`;
+            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/page?mode=done&update_version_code=22909900&os_api=29&device_platform=android&iid=${iid}&device_id=${device_id}&aid=${aid}`;
             const options = {
                 url: url,
                 headers: {
@@ -112,24 +169,21 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
                     if (data) {
                         data = JSON.parse(data);
                         if (data.data.is_login) {
-                            $.log(`账号[${index}]今日金币收入:${data.data.income_data?.amount1} 余额:${data.data.income_data?.amount2 / 100}元`);
-                            if (data.data.treasure_stats) {
-                                let treasure_stats = data.data.treasure_stats;
-                                if (treasure_stats.next_time < treasure_stats.cur_time) {
-                                    $.log(`账号[${index}]准备开宝箱，这里要开几分钟`);
-                                    //可以开宝箱
-                                    let openCount = 0;
-                                    while (!isOpenBox) {
-                                        openCount++;
-                                        await open_box();
-                                        // if(openCount>100){
-                                        //     isOpenBox=true;
-                                        // }
-                                        // await $.wait(1000);
+                            if (open) {
+                                if (data.data.treasure_stats) {
+                                    task_list = data.data.task_list;
+                                    let treasure_stats = data.data.treasure_stats;
+                                    if (treasure_stats.next_time <= treasure_stats.cur_time) {
+                                        $.log(`账号[${index}]准备开宝箱，这里可能会卡一会`);
+                                        //可以开宝箱
+                                        await whileTask('open_box','开宝箱',5,open_box)
+                                    } else {
+                                        $.log(`账号[${index}]下次开宝箱时间：${$.time('yyyy-MM-dd HH:mm:ss', treasure_stats.next_time * 1000)}`);
+                                        nextOpenTime = treasure_stats.next_time;
                                     }
-                                } else {
-                                    $.log(`账号[${index}]下次开宝箱时间：${new Date(treasure_stats.next_time * 1000)}`);
                                 }
+                            } else {
+                                $.log(`账号[${index}]今日金币收入:${data.data.income_data?.amount1} 余额:${data.data.income_data?.amount2 / 100}元`);
                             }
                             isbreak = false;
                         } else {
@@ -148,11 +202,12 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
 
     function sign() {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/done/sign_in?iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}`;
+            let t = new Date().getTime(), ts = parseInt((t / 1000) + '');
+            let url = `https://api26-normal-lq.amemv.com/luckycat/aweme/v1/task/done/sign_in?iid=${iid}&device_id=${device_id}&ac=wifi&channel=wandoujia_2329_0624&aid=${aid}&app_name=${app_name}&version_code=220900&version_name=${version_name}&device_platform=android&os=android&ssmix=a&device_type=SHARK+KSR-A10&device_brand=blackshark&language=zh&os_api=31&os_version=12&manifest_version_code=220901&resolution=1080*2190&dpi=440&update_version_code=22909900&_rticket=${t}&package=com.ss.android.ugc.aweme.lite&mcc_mnc=46001&gold_container=1&cpu_support64=true&host_abi=armeabi-v7a&is_guest_mode=0&app_type=normal&minor_status=0&appTheme=dark&need_personal_recommend=1&is_android_pad=0&ts=${ts}&status_bar_height=29`;
             const options = {
                 url: url,
                 headers: {
-                    'Host': 'api5-normal-c-lf.amemv.com',
+                    'Host': 'api26-normal-lq.amemv.com',
                     'content-type': 'application/json; charset=utf-8',
                     'user-agent': $user_agent,
                     'Cookie': cookie
@@ -174,9 +229,37 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
         })
     }
 
+    function excitation_ad_signin() {
+        return new Promise(resolve => {
+            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/excitation_ad_signin?mode=done&update_version_code=22909900&oaid=5992671818827601&os_api=29&device_platform=android&ac=wifi&channel=bf_1007913_2329_47_3&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}`;
+            const options = {
+                url: url,
+                headers: {
+                    'Host': 'api5-normal-c-lq.amemv.com',
+                    'content-type': 'application/json; charset=utf-8',
+                    'user-agent': $user_agent,
+                    'Cookie': cookie
+                },
+                body: '{}'
+            }
+            $.post(options, async (err, resp, data) => {
+                try {
+                    if (data) {
+                        data = JSON.parse(data);
+                        $.log(`账号[${index}]签到视频: ${data.err_tips}`);
+                    }
+                } catch (e) {
+                    $.logErr(e, resp);
+                } finally {
+                    resolve(data);
+                }
+            });
+        })
+    }
+
     function open_box() {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/done/treasure_task?_request_from=web&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/done/treasure_task?_request_from=web&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
             const options = {
                 url: url,
                 headers: {
@@ -192,18 +275,29 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
                     if (data) {
                         data = JSON.parse(data);
                         if (data.err_no == 0) {
-                            isOpenBox = true;
+                            whileObj['open_box'] = true;
                             $.log(`账号[${index}]${data.data.success_desc}: ${data.data.amount}金币`);
-                            $.log(`账号[${index}]下次开宝箱时间为：${new Date(data.data.next_time * 1000)}`);
+                            $.log(`账号[${index}]下次开宝箱时间为：${$.time('yyyy-MM-dd HH:mm:ss', data.data.next_time * 1000)}`);
                             let excitation_ad_info = data.data.excitation_ad_info;
                             if (excitation_ad_info) {
                                 excitation_ad_info.amount = data.data.amount;
                                 excitation_ad_info.ad_alias_position = 'box';
                                 $.log(`账号[${index}]开宝箱-看广告视频预计再赚${excitation_ad_info.score_amount}金币`);
-                                await show_ad(excitation_ad_info);
+                               await whileTask('show_ad','看宝箱视频',5,async ()=>{
+                                    let a= show_ad(excitation_ad_info);
+                                    await a;
+                                })
+                                // let showAdTime = new Date().getTime();
+                                // while (!isOpenBoxAd) {
+                                //     await show_ad(excitation_ad_info);
+                                //     if (new Date().getTime() - showAdTime > 60 * 1000 * 5) {
+                                //         $.log(`账号[${index}]看宝箱视频失败，超过5分钟，停止`);
+                                //         isOpenBoxAd = true;//超过5分钟，停止开箱子
+                                //     }
+                                // }
                             }
                         } else {
-                            //$.log(`账号[${index}]开宝箱: ${data.err_tips}`);
+                            // $.log(`账号[${index}]开宝箱: ${data.err_tips}`);
                         }
                     }
                 } catch (e) {
@@ -217,7 +311,7 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
 
     function ad_append(task_key = 'excitation_ad', name = '', one_more_round = 0) {
         return new Promise(resolve => {
-            let url = `https://aweme.snssdk.com/luckycat/aweme/v1/task/done/excitation_ad/one_more?_request_from=web&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://aweme.snssdk.com/luckycat/aweme/v1/task/done/excitation_ad/one_more?_request_from=web&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
             const options = {
                 url: url,
                 headers: {
@@ -233,9 +327,13 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
                     if (data) {
                         data = JSON.parse(data);
                         if (data.err_no == 0) {
+                            whileObj[task_key]=true;
                             $.log(`账号[${index}]${name ? name : task_key}: 获得${data.data.amount}金币`);
                         } else {
-                            $.log(`账号[${index}]${name ? name : task_key}: ${data.err_tips}`);
+                            if(data.err_tips.indexOf('溜走')==-1){
+                                whileObj[task_key]=true;
+                                $.log(`账号[${index}]${name ? name : task_key}: ${data.err_tips}`);
+                            }
                         }
                     }
                 } catch (e) {
@@ -249,7 +347,7 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
 
     function show_ad(ad_info) {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/done/${ad_info.task_key}?_request_from=web&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/done/${ad_info.task_key}?_request_from=web&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
             const options = {
                 url: url,
                 headers: {
@@ -265,9 +363,14 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
                     if (data) {
                         data = JSON.parse(data);
                         if (data.err_no == 0) {
+                            whileObj['show_ad']=true;
                             $.log(`账号[${index}]${data.data.content}: ${data.data.amount}金币`);
                         } else {
-                            $.log(`账号[${index}]看广告视频: ${data.err_tips}`);
+                            if ( data.err_tips.indexOf('溜走')==-1) {
+                                whileObj['show_ad']=true;
+                                $.log(`账号[${index}]看广告视频: ${data.err_tips}`);
+                            }
+                            // $.log(`账号[${index}]看广告视频: ${data.err_tips}`);
                         }
                     }
                 } catch (e) {
@@ -281,7 +384,7 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
 
     function upload_step() {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-hl.amemv.com/luckycat/aweme/v1/task/walk/step_submit?iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://api5-normal-c-hl.amemv.com/luckycat/aweme/v1/task/walk/step_submit?iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
             const options = {
                 url: url,
                 headers: {
@@ -290,16 +393,50 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
                     'user-agent': $user_agent,
                     'Cookie': cookie,
                 },
-                body: `{"step":${parseInt((10000 + Math.random() * 10000) + "")},"submit_time":${new Date().getTime() / 1000}`
+                body: `{"step":${parseInt((10000 + Math.random() * 10000) + "")},"submit_time":${parseInt((new Date().getTime() / 1000) + "")}}`
             }
             $.post(options, async (err, resp, data) => {
                 try {
                     if (data) {
                         data = JSON.parse(data);
                         if (data.err_no == 0) {
-                            $.log(`账号[${index}]上传步数奖励: 获得${data.data.amount}金币`);
+                            $.log(`账号[${index}]上传步数：今日步数${data.data.today_step}步`);
+                            await receive_step_reward();
                         } else {
-                            $.log(`账号[${index}]上传步数奖励: ${data.err_tips}`);
+                            $.log(`账号[${index}]上传步数: ${data.err_tips}`);
+                        }
+                    }
+                } catch (e) {
+                    $.logErr(e, resp);
+                } finally {
+                    resolve(data);
+                }
+            });
+        })
+    }
+
+
+    function receive_step_reward() {
+        return new Promise(resolve => {
+            let url = `https://api5-normal-c-hl.amemv.com/luckycat/aweme/v1/task/walk/receive_step_reward?iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
+            const options = {
+                url: url,
+                headers: {
+                    'Host': 'aweme.snssdk.com',
+                    'content-type': 'application/json; charset=utf-8',
+                    'user-agent': $user_agent,
+                    'Cookie': cookie,
+                },
+                body: ``
+            }
+            $.post(options, async (err, resp, data) => {
+                try {
+                    if (data) {
+                        data = JSON.parse(data);
+                        if (data.err_no == 0) {
+                            $.log(`账号[${index}]领取步数奖励：${data.data.reward_amount}金币`);
+                        } else {
+                            $.log(`账号[${index}]领取步数奖励: ${data.err_tips}`);
                         }
                     }
                 } catch (e) {
@@ -313,7 +450,7 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
 
     function excitation_ad() {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/excitation_ad?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/excitation_ad?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
             const options = {
                 url: url,
                 headers: {
@@ -329,9 +466,13 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
                     if (data) {
                         data = JSON.parse(data);
                         if (data.err_no == 0) {
+                            whileObj['excitation_ad_1']=true;
                             $.log(`账号[${index}]看广告: 获得${data.data.amount}金币`);
                         } else {
-                            $.log(`账号[${index}]看广告: ${data.err_tips}`);
+                            if (data.err_tips.indexOf('溜走')==-1) {
+                                whileObj['excitation_ad_1']=true;
+                                $.log(`账号[${index}]看广告: ${data.err_tips}`);
+                            }
                         }
                     }
                 } catch (e) {
@@ -345,7 +486,7 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
 
     function shopping_gold() {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/shopping_gold?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/shopping_gold?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900&device_platform=android&ssmix=a&device_type=16s%20Pro&device_brand=meizu&language=zh&os_api=29&os_version=10&openudid=4f610d4834203d53&manifest_version_code=140100&resolution=1080*2232&dpi=480&_rticket=1653539259693&mcc_mnc=46011&tool_grey_user=0&cpu_support64=true&host_abi=armeabi-v7`;
             const options = {
                 url: url,
                 headers: {
@@ -377,11 +518,11 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
 
     function excitation_ad_treasure_box() {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/excitation_ad_treasure_box?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/excitation_ad_treasure_box?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
             const options = {
                 url: url,
                 headers: {
-                    'Host': 'aweme.snssdk.com',
+                    'Host': 'api5-normal-c-lq.amemv.com',
                     'content-type': 'application/json; charset=utf-8',
                     'user-agent': $user_agent,
                     'Cookie': cookie,
@@ -393,9 +534,13 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
                     if (data) {
                         data = JSON.parse(data);
                         if (data.err_no == 0) {
+                            whileObj['excitation_ad_treasure_box']=true;
                             $.log(`账号[${index}]开宝箱视频: ${data.data.amount}金币`);
                         } else {
-                            $.log(`账号[${index}]开宝箱视频: ${data.err_tips}`);
+                            if (data.err_tips.indexOf('溜走')==-1) {
+                                whileObj['excitation_ad_treasure_box']=true;
+                                $.log(`账号[${index}]开宝箱视频: ${data.err_tips}`);
+                            }
                         }
                     }
                 } catch (e) {
@@ -409,7 +554,7 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
 
     function one_more_detail() {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/excitation_ad/one_more/detail?task_key=excitation_ad_treasure_box&rit=28038&creator_id=12317000&one_more_round=0&mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://api5-normal-c-lf.amemv.com/luckycat/aweme/v1/task/excitation_ad/one_more/detail?task_key=excitation_ad_treasure_box&rit=28038&creator_id=12317000&one_more_round=0&mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
             const options = {
                 url: url,
                 headers: {
@@ -425,8 +570,11 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
                         data = JSON.parse(data);
                         if (data.err_no == 0) {
                             if (data.data.has_one_more) {
-                                //$.log(`账号[${index}]宝箱连续视频下次奖励: ${data.data.amount}金币`);
-                                await ad_append('excitation_ad_treasure_box', '宝箱连续视频');
+                                $.log(`账号[${index}]宝箱连续视频下次奖励: ${data.data.amount}金币`);
+                                await whileTask('excitation_ad_treasure_box', '宝箱连续视频', 2, async () => {
+                                    let a=ad_append('excitation_ad_treasure_box', '宝箱连续视频');
+                                    await a;
+                                })
                             }
                         } else {
                             $.log(`账号[${index}]宝箱连续视频下次奖励: ${data.err_tips}`);
@@ -441,50 +589,19 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
         })
     }
 
-    function read() {
-        return new Promise(resolve => {
-            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/read?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
-            const options = {
-                url: url,
-                headers: {
-                    'Host': 'aweme.snssdk.com',
-                    'content-type': 'application/json; charset=utf-8',
-                    'user-agent': $user_agent,
-                    'Cookie': cookie,
-                },
-                body: `{}`
-            }
-            $.post(options, async (err, resp, data) => {
-                try {
-                    if (data) {
-                        data = JSON.parse(data);
-                        if (data.err_no == 0) {
-                            $.log(`账号[${index}]观看视频: ${data.data.score_amount}金币`);
-                        } else {
-                            $.log(`账号[${index}]观看视频: ${data.err_tips}`);
-                        }
-                    }
-                } catch (e) {
-                    $.logErr(e, resp);
-                } finally {
-                    resolve(data);
-                }
-            });
-        })
-    }
 
     function search_excitation() {
         return new Promise(resolve => {
-            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/search_excitation?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=14709901`;
+            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/search_excitation?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
             const options = {
                 url: url,
                 headers: {
-                    'Host': 'aweme.snssdk.com',
+                    'Host': 'api5-normal-c-lq.amemv.com',
                     'content-type': 'application/json; charset=utf-8',
                     'user-agent': $user_agent,
                     'Cookie': cookie,
                 },
-                body: `{}`
+                body: ``
             }
             $.post(options, async (err, resp, data) => {
                 try {
@@ -505,7 +622,117 @@ function UserInfo(seesion = '', device_id = '', iid = '') {
         })
     }
 
+    function task(taskKey, taskName, body = {}) {
+        return new Promise(resolve => {
+            let url = `https://api5-normal-c-lq.amemv.com/luckycat/aweme/v1/task/done/${taskKey}?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
+            const options = {
+                url: url,
+                headers: {
+                    'Host': 'aweme.snssdk.com',
+                    'content-type': 'application/json; charset=utf-8',
+                    'user-agent': $user_agent,
+                    'Cookie': cookie,
+                },
+                body: JSON.stringify(body)
+            }
+            $.post(options, async (err, resp, data) => {
+                try {
+                    if (data) {
+                        data = JSON.parse(data);
+                        if (data.err_no == 0) {
+                            whileObj[taskKey] = true;
+                            if(data.data.score_amount){
+                                $.log(`账号[${index}]${taskName}: ${data.data.score_amount}金币`);
+                            }else{
+                                $.log(`账号[${index}]${taskName}: ${JSON.stringify(data)}`);
+                            }
+                        } else {
+                            if ('你已完成此任务' === data.err_tips) {
+                                whileObj[taskKey] = true;
+                                $.log(`账号[${index}]${taskName}: ${data.err_tips}`);
+                            }else if(data.err_tips.indexOf('溜走')==-1){
+                                whileObj[taskKey] = true;
+                                $.log(`账号[${index}]${taskName}: ${data.err_tips}`);
+                            }
+                            //$.log(`账号[${index}]${taskName}: ${data.err_tips}`);
+                        }
+                    }
+                } catch (e) {
+                    $.logErr(e, resp);
+                } finally {
+                    resolve(data);
+                }
+            });
+        })
+    }
 
+    function meal_check_in(taskName = "吃饭补贴") {
+        return new Promise(resolve => {
+            let timeHours = parseInt($.time('HH'));
+            let meal_index = 0;
+            if (timeHours >= 5 && timeHours < 9) {
+                meal_index = 0;
+            } else if (timeHours >= 11 && timeHours < 13) {
+                meal_index = 1;
+            } else if (timeHours >= 17 && timeHours < 20) {
+                meal_index = 2;
+            } else if (timeHours >= 21 && timeHours < 24) {
+                meal_index = 3;
+            } else {
+                whileObj.meal_check_in = true;
+                resolve();
+                return;
+            }
+            let body = {"meal_index": meal_index, "aid": "2329"}
+            let url = `https://minigame5-normal-lq.zijieapi.com/ttgame/meal/check_in?mode=done&iid=${iid}&device_id=${device_id}&app_name=${app_name}&version_name=${version_name}&aid=${aid}&device_platform=android&dpi=411&update_version_code=22909900`;
+            const options = {
+                url: url,
+                headers: {
+                    'Host': 'minigame5-normal-lq.zijieapi.com',
+                    'Content-Type': 'application/json',
+                    'user-agent': $user_agent,
+                    'Cookie': cookie,
+                },
+                body: JSON.stringify(body)
+            }
+            $.post(options, async (err, resp, data) => {
+                try {
+                    if (data) {
+                        data = JSON.parse(data);
+                        if (data.code == 0) {
+                            whileObj.meal_check_in = true;
+                            $.log(`账号[${index}]${taskName}: ${data.data.reward}金币`);
+                            await ad_append('meal_excitation_ad', '吃饭补贴视频');
+                        } else {
+                            if (data.message.indexOf('溜走')==-1) {
+                                whileObj.meal_check_in = true;
+                                $.log(`账号[${index}]${taskName}: ${data.message}`);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    $.logErr(e, resp);
+                } finally {
+                    resolve(data);
+                }
+            });
+        })
+    }
+
+    async function whileTask(key = 'task', name = "", outTime = 5, callback) {
+        if (callback) {
+            whileObj[key]=false;
+            let startTime = new Date().getTime();
+            $.log(`账号[${index}]${name}开始`);
+            while (!whileObj[key]) {
+                await callback();
+                if (new Date().getTime() - startTime > outTime * 60 * 1000) {
+                    $.log(`账号[${index}]${name}失败，响应超过${outTime}分钟，停止该任务`);
+                    whileObj[key] = true;
+                }
+            }
+        }
+    }
 }
 
 

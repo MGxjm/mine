@@ -4,11 +4,11 @@
 格式：export dyjsb="sessionid=xxxx&device_id=xxxxx&iid=xxxx"  
 多账号换行隔开
 
-cron 32 0/30 * * ?
+cron: 32 0/30 * * ?
 
 */
 
-const $ = new Env("抖音极速版");
+const $ = new Env("抖音极速版低保");
 let envSplitor = '\n'  //多账号隔开方式，默认换行可自定义
 
 ///////////////////////////////维护参数自行更换//////////////////////////////////
