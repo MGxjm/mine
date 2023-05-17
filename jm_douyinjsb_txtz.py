@@ -28,7 +28,7 @@ def run():
             break
     else:
         print("第一天运行")
-        send(title,"今天还没有12点的日志！")
+        send(title,"昨天没有0点的日志！")
         exit()
     for j in logs[::-1]:
         if j.startswith(f'{jt}-23'):
@@ -38,8 +38,8 @@ def run():
             log_jt=os.path.abspath(j)
             break
     else:
-        print("今天还没有12点的日志！")
-        send(title,"今天还没有12点的日志！")
+        print("今天还没有0点的日志！")
+        send(title,"今天还没有0点的日志！")
         exit()
     je_jt=read_log(log_jt)
     je_zt=read_log(log_zt)
