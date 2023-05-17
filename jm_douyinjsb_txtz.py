@@ -15,12 +15,15 @@ def run():
     log_fo = f"{os.getcwd()}_jm_douyinjsb_tongzhi"
     os.chdir("../../log/")
     for i in os.listdir(os.getcwd()):
-        if "douyinjsb_tongzhi" in i:
+        if "douyinjsb_tongzhi" in i and i.endswith("log"):
             log_fo = i
             os.chdir(f"{log_fo}")
     logs=sorted(os.listdir(os.getcwd()))
     for i in logs:
         if i.startswith(f'{zt}-23') and i.endswith("log"):
+            log_zt=os.path.abspath(i)
+            break
+        elif i.startswith(f'{zt}') and i.endswith("log"):
             log_zt=os.path.abspath(i)
             break
     else:
@@ -29,6 +32,9 @@ def run():
         exit()
     for j in logs[::-1]:
         if j.startswith(f'{jt}-23'):
+            log_jt=os.path.abspath(j)
+            break
+        elif j.startswith(f'{jt}'):
             log_jt=os.path.abspath(j)
             break
     else:
