@@ -49,7 +49,7 @@ def run():
         msg=''
         while i< len(je_zt):
             if je_jt[i]>15 or je_jt[i]<je_zt[i]:
-                msg+=f"恭喜@{qq(i)}可以提现了!\n"
+                msg+=f"恭喜@{qq(i)}可以提现了!\n\n"
             i+=1
         if not msg :
             print("今天还没有人够提现，明天再看看。")
