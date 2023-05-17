@@ -18,7 +18,6 @@ def run():
         if "douyinjsb_tongzhi" in i and os.path.isdir(i):
             log_fo = i
             os.chdir(f"{log_fo}")
-            print("进了"+log_fo)
     logs=sorted(os.listdir(os.getcwd()))
     for i in logs:
         if i.startswith(f'{zt}-23') and i.endswith("log"):
@@ -49,22 +48,27 @@ def run():
         msg=''
         while i< len(je_zt):
             if je_jt[i]>15 or je_jt[i]<je_zt[i]:
-                msg+=f"恭喜@{qq(i)}可以提现了!\n\n"
+                msg+=f"恭喜@{qq(i) }可以提现了!\n\n"
             i+=1
         if not msg :
             print("今天还没有人够提现，明天再看看。")
             send(title,"今天还没有人够提现，明天再看看。")
         else:
             send(title,msg)
-    else:print("有账号登录失效！请检查！")
-    send(title,"有账号失效，请检查！")
+    else:
+        print("有账号登录失效！请检查！")
+        send(title,"有账号失效，请检查！")
 
 
 def qq(i):
-    dyjsb=os.environ['dyjsb']
-    ulist=dyjsb.split("\n")
-    # ulist = dyjsb["comment"].split(" ")
-    return ulist[i - 1]
+    if 'dyjsb_qq' in os.environ:
+        dyjsb_qq=os.environ['dyjsb_qq']
+        ulist=dyjsb_qq.split("\n")
+        return ulist[i]
+    else:
+        dyjsb_qq=os.environ['dyjsb']
+        ulist=dyjsb_qq.split("\n")
+        return ulist[i]
 
 
 def read_log(filepath):
