@@ -20,7 +20,7 @@ def run():
             os.chdir(f"{log_fo}")
     logs=sorted(os.listdir(os.getcwd()))
     for i in logs:
-        if i.startswith(f'{zt}-23'):
+        if i.startswith(f'{zt}-23') and i.endswith("log"):
             log_zt=os.path.abspath(i)
             break
     else:
