@@ -12,11 +12,9 @@ def run():
 
     jt= datetime.today().strftime("%Y-%m-%d")
     zt=(datetime.today()-timedelta(days=1)).strftime("%Y-%m-%d")
-    print(jt,zt)
     log_fo = f"{os.getcwd()}_jm_douyinjsb_tongzhi"
     os.chdir("../../log/")
     for i in os.listdir(os.getcwd()):
-        print(i)
         if "douyinjsb_tongzhi" in i:
             log_fo = i
             os.chdir(f"{log_fo}")
