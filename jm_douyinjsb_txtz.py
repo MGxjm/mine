@@ -28,8 +28,7 @@ def run():
             break
     else:
         print("第一天运行")
-        send(title,"昨天没有0点的日志！")
-        exit()
+        log_zt=None
     for j in logs[::-1]:
         if j.startswith(f'{jt}-23'):
             log_jt=os.path.abspath(j)
@@ -38,9 +37,8 @@ def run():
             log_jt=os.path.abspath(j)
             break
     else:
-        print("今天还没有0点的日志！")
-        send(title,"今天还没有0点的日志！")
-        exit()
+        print("还没统计过呢，别急，明天再看。")
+        log_jt=None
     je_jt=read_log(log_jt)
     je_zt=read_log(log_zt)
     if len(je_zt)<=len(je_jt):
@@ -73,6 +71,8 @@ def qq(i):
 
 def read_log(filepath):
     """return yu e list"""
+    if filepath==None:
+        return 0
     je = []
     with open(filepath, "r") as f:
         lines = f.read().split("\n")
