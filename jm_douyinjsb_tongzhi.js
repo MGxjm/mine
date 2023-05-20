@@ -35,7 +35,11 @@ let tokens = $.getdata('dyjsb') || process.env['dyjsb'] || '';
 
     }
     var notify = require('./sendNotify');
-    await notify.sendNotify("抖极今日统计", tongzhi);
+    let enab = $.getdata('dyjsb_tz') || process.env['dyjsb_tz'] || '';
+    if (enab){
+        await notify.sendNotify("抖极今日统计", tongzhi);
+    }
+    
     }
     )()
     .catch((e) => $.logErr(e))

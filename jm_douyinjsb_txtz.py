@@ -9,7 +9,7 @@ from notify import send
 title="抖极今日提现"
 
 def run():
-
+    msg=''
     jt= datetime.today().strftime("%Y-%m-%d")
     zt=(datetime.today()-timedelta(days=1)).strftime("%Y-%m-%d")
     log_fo = f"{os.getcwd()}_jm_douyinjsb_tongzhi"
@@ -27,7 +27,7 @@ def run():
             log_zt=os.path.abspath(i)
             break
     else:
-        print("第一天运行")
+        msg+="昨天没有统计 或者 请把青龙日志设置为保留2天以上"
         log_zt=None
     for j in logs[::-1]:
         if j.startswith(f'{jt}-23'):
@@ -37,25 +37,22 @@ def run():
             log_jt=os.path.abspath(j)
             break
     else:
-        print("还没统计过呢，别急，明天再看。")
+        msg+=("刚来吧？先别急，明天再运行试试")
         log_jt=None
     je_jt=read_log(log_jt)
     je_zt=read_log(log_zt)
-    if len(je_zt)<=len(je_jt):
+    if je_jt and len(je_zt)<=len(je_jt):
         i=0
-        msg=''
         while i< len(je_zt):
             if je_jt[i]>15 or je_jt[i]<je_zt[i]:
                 msg+=f"恭喜@{qq(i) }可以提现了!\n\n"
             i+=1
         if not msg :
-            print("今天还没有人够提现，明天再看看。")
-            send(title,"今天还没有人够提现，明天再看看。")
+            send(title,"今天还没有人够提现，明天再看看")
         else:
             send(title,msg)
     else:
-        print("有账号登录失效！请检查！")
-        send(title,"有账号失效，请检查！")
+        send(title,msg)
 
 
 def qq(i):
